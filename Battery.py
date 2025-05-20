@@ -1,51 +1,40 @@
 import numpy as np
 
-
-class LithiumIonBattery:
-    def __init__(self, total_capacity):
-        # working voltage 3.8
-        # cut-off voltage 2
-        # we have 100 cells
-        self.cell_voltage = 4.0
-        self.cutoff_voltage = 2.0
-        self.grade = (self.cell_voltage - self.cutoff_voltage) / 100.0
-        self.total_capacity = total_capacity  # Wh
-        self.capacity = total_capacity  # Wh
-        self.ah = self.capacity / (self.cell_voltage * 100.0)
+class lithium_ion_battery():
+    # working voltage 3.8
+    # cut-off voltage 2
+    # we have 100 cells
+    def __init__(self, capacity):
+        self.cell_voltage = 4
+        self.cutoff_voltage = 2
+        self.grade = (self.cell_voltage - self.cutoff_voltage) / 100
+        self.total_capacity = capacity
+        self.capacity = capacity * 0.9  # 初始90%电量
+        self.Ah = capacity / (self.cell_voltage * 100)
         self.need_charge = False
-        self.energy_consumed = 0.0
-        self.soc = 0.9
-        # self.output = 1  # unit is C, c rate
-
+        self.energy_consume = 0
+        self.SOC = 0.9
 
     def use(self, duration, power):
-        # duration in second
-        # power in Watt  (j/s)
-        # self.need_charge = False
-        self.soc = self.capacity / self.total_capacity
-        if self.soc > 0.9:
-            self.soc = 0.9
-        if self.soc <= 0.2:
+        # 先消耗能量
+        self.energy_consume = duration * power / (3600)
+        self.capacity -= self.energy_consume
+
+        # 重新计算SOC
+        self.SOC = self.capacity / self.total_capacity
+        if self.SOC > 0.9:
+            self.SOC = 0.9
+        if self.SOC <= 0.2:
             self.need_charge = True
-        self.cell_voltage = self.soc * 100.0 * self.grade + self.cutoff_voltage  # we assume it is linear
-        # self.capacity -= duration * outputrate * self.Ah * self.cell_voltage * 100 / 3600
-        if not self.need_charge:
-            self.energy_consumed = duration * power / 3600.0
-            self.capacity -= self.energy_consumed
+        else:
+            self.need_charge = False
+
         return self.need_charge
 
-    def charge(self, energy):
-        if (energy + self.capacity) > self.total_capacity:
-            self.capacity = self.total_capacity
-            self.need_charge = False
-        else:
-            self.capacity += energy
-            self.need_charge = False
-
-    @property
-    def energy_consume(self):
-        return self.energy_consumed
-
-    @property
-    def SOC(self):
-        return self.soc
+    def charge(self, wh):
+        self.capacity = min(self.capacity + wh, self.total_capacity)
+        self.SOC = self.capacity / self.total_capacity
+        if self.SOC > 0.9:
+            self.SOC = 0.9
+            self.capacity = self.total_capacity * 0.9
+        self.need_charge = False
