@@ -1,36 +1,22 @@
 import math
 
-
-class EnergyCalculator:
+class need_energy():
     def __init__(self):
-        self.vehicle_mass = 2000  # kg
+        self.mass = 2000 #kg
         self.mass_factor = 1.05
-        self.acceleration = 0  # m^2 / s
-        self.rolling_resistance_coefficient = 0.02  # coefficient of rolling resistance
-        self.air_density = 1.225  # kg/m^3
-        self.frontal_area = 2  # m^2
-        self.aerodynamic_drag_coefficient = 0.5
-        self.wind_speed = 0  # m/s
-        self.road_angle = 0  # degrees
+        self.acceleration = 0 # m^2 / s
+        self.coeff_roll_R = 0.02  # coefficient of rolling resistance
+        self.air_density = 1.225 # kg/m^3
+        self.front_area = 2 # m^2
+        self.aero_drag_coff = 0.5
+        self.wind_speed = 0 # m/s
+        self.road_angle = 0 # angle
 
-    def calculate_energy_consumption(self, road_angle, driving_speed):
-        self.road_angle = road_angle
-        rad_angle = math.radians(road_angle)
-        rolling_resistance_power = (
-            self.mass_factor * self.vehicle_mass * self.acceleration) +(
-            self.vehicle_mass * 9.8 *
-            self.rolling_resistance_coefficient * math.cos(rad_angle)
-        )
-        aerodynamic_drag_power = (
-            0.5 * self.air_density * self.frontal_area * self.aerodynamic_drag_coefficient *
-            (driving_speed - self.wind_speed) ** 2
-        )
-        gravitational_power = self.vehicle_mass * 9.8 * math.sin(rad_angle)
-        total_power = (rolling_resistance_power +
-                       aerodynamic_drag_power + gravitational_power) * driving_speed
-        return total_power
-
-        # ✅ 新增的别名方法
-
-    def energy(self, angle, V):
-        return self.calculate_energy_consumption(road_angle=angle, driving_speed=V)
+    def energy(self, angle, V):  # V is driving speed
+        self.road_angle = angle
+        rad = math.radians(angle)
+        p1 = (self.mass_factor * self.mass * self.acceleration) + (self.mass * 9.8 * self.coeff_roll_R * math.cos(rad))
+        p2 = 0.5 * self.air_density * self.front_area * self.aero_drag_coff * ((V - self.wind_speed)**2)
+        p3 = self.mass * 9.8 * math.sin(rad)
+        P = (p1 + p2 + p3) * V   # Watt
+        return P
