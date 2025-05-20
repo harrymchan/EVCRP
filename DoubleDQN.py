@@ -1,51 +1,32 @@
-# import tensorflow.compat.v1 as tf
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
+import tensorflow as tf
 
+class Qnetwork(tf.keras.Model):
+    def __init__(self, s_size, a_size):
+        super(Qnetwork, self).__init__()
+        self.a_size = a_size
+        self.s_size = s_size
+        self.dense1 = tf.keras.layers.Dense(10, activation='relu', kernel_initializer='glorot_normal', name='w1')
+        self.dropout1 = tf.keras.layers.Dropout(0.25)
+        self.dense2 = tf.keras.layers.Dense(6, activation='relu', kernel_initializer='glorot_normal', name='w2')
+        self.dropout2 = tf.keras.layers.Dropout(0.25)
+        self.out = tf.keras.layers.Dense(a_size, name='w3')
 
-class QNetwork():
-    def __init__(self, state_size, action_size):
-        self.state_size = state_size
-        self.action_size = action_size
-        self.build_model()
+    def call(self, x, training=False):
+        # Normalize input to [-1,1]
+        x = tf.convert_to_tensor(x, dtype=tf.float32)
+        x = x / tf.constant([180.0, 180.0])
+        x = self.dense1(x)
+        x = self.dropout1(x, training=training)
+        x = self.dense2(x)
+        x = self.dropout2(x, training=training)
+        q_values = self.out(x)
+        return q_values
 
-    def build_model(self):
-        initializer = tf.initializers.glorot_normal()
-        self.inputs = tf.placeholder(dtype=tf.float32, shape=[
-                                     None, self.state_size])
-        self.normalized_inputs = tf.divide(self.inputs, [[180.0, 180.0]])
+    def predict_action(self, x):
+        q_values = self.call(x, training=False)
+        return tf.argmax(q_values, axis=1)
 
-        # Hidden layer 1
-        self.W1 = tf.Variable(initializer(
-            shape=[self.state_size, 10]), dtype=tf.float32, name='W1')
-        self.b1 = tf.Variable(tf.zeros([10]), dtype=tf.float32, name='b1')
-        h1 = tf.nn.relu(tf.matmul(self.normalized_inputs, self.W1) + self.b1)
-        h1_drop = tf.nn.dropout(h1, rate=0.25)
-
-        # Hidden layer 2
-        self.W2 = tf.Variable(initializer(
-            shape=[10, 6]), dtype=tf.float32, name='W2')
-        self.b2 = tf.Variable(tf.zeros([6]), dtype=tf.float32, name='b2')
-        h2 = tf.nn.relu(tf.matmul(h1_drop, self.W2) + self.b2)
-        h2_drop = tf.nn.dropout(h2, rate=0.25)
-
-        # Output layer
-        self.W3 = tf.Variable(initializer(
-            shape=[6, self.action_size]), dtype=tf.float32, name='W3')
-        self.b3 = tf.Variable(
-            tf.zeros([self.action_size]), dtype=tf.float32, name='b3')
-        self.Q_values = tf.matmul(h2_drop, self.W3) + self.b3
-        self.predictions = tf.argmax(input=self.Q_values, axis=1)
-
-        # Training
-        self.target_values = tf.placeholder(dtype=tf.float32, shape=[None])
-        self.actions = tf.placeholder(dtype=tf.int32, shape=[None])
-        self.actions_onehot = tf.one_hot(
-            indices=self.actions, depth=self.action_size, on_value=1, off_value=0)
-        self.predictions_onehot = tf.cast(self.actions_onehot, tf.float32)
-        self.Q = tf.reduce_sum(tf.multiply(
-            self.predictions_onehot, self.Q_values), axis=1)
-
-        self.loss = tf.reduce_mean(tf.square(self.target_values - self.Q))
-        self.optimizer = tf.train.AdamOptimizer(learning_rate=0.0001)
-        self.train_op = self.optimizer.minimize(self.loss)
+    def get_q_value(self, x, a):
+        q_values = self.call(x, training=False)
+        indices = tf.stack([tf.range(tf.shape(a)[0]), a], axis=1)
+        return tf.gather_nd(q_values, indices)
